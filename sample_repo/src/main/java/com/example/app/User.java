@@ -1,6 +1,9 @@
-
 package com.example.app;
 
 public class User {
-    Integer legacyAge = Integer.valueOf(25);
+    private final int legacyAge = 25;
+
+    public int getLegacyAge() {
+        return legacyAge;
+    }
 }
