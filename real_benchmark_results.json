@@ -1,0 +1,24 @@
+{
+  "repo": "apache/commons-io (commons-io-2.5)",
+  "total_java_files": 115,
+  "openrewrite_only_115_files": {
+    "time_sec": 54.72,
+    "tokens": 0,
+    "build_passed": false,
+    "tests_passed": false
+  },
+  "llm_only_10_file_sample": {
+    "time_sec": 295.36,
+    "tokens": 47583,
+    "projected_115_files_tokens": 547204,
+    "projected_115_files_time_sec": 3396.6
+  },
+  "codeshift_hybrid_115_files": {
+    "time_sec": 63.99,
+    "tokens": 0,
+    "broken_files_repaired": 0,
+    "escalated": 0,
+    "build_passed": false,
+    "tests_passed": false
+  }
+}
