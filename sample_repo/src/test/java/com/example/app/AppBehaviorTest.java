@@ -9,4 +9,10 @@ public class AppBehaviorTest{
         User user = new User();
         assertEquals(25,user.getLegacyAge());
     }
+
+    @Test
+    void encoderProducesExpectedBase64(){
+        LegacyTokenEncoder encoder = new LegacyTokenEncoder();
+        assertEquals("aGVsbG8=", encoder.encode("hello"));
+    }
 }

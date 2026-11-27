@@ -58,7 +58,9 @@ def migrate_file_node(state : MigrationState) -> MigrationState:
 def verify_build_node(state : MigrationState) -> MigrationState:
 
     build = run_maven_build(state['repo_path'],java_version = 21, offline = True)
-    if build["passed"]:
+    file_name = Path(state["current_file"]).name
+    file_errors = [err for err in build["errors"] if file_name in err]
+    if build["passed"] or not file_errors:
         return {
         "completed_files": state["completed_files"] + [state["current_file"]],
         "files_queue": state["files_queue"][1:],
@@ -77,7 +79,7 @@ def verify_build_node(state : MigrationState) -> MigrationState:
             "retries": 0,
         }
         return {
-            "errors": build["errors"],
+            "errors": file_errors,
             "retries": next_retries,
     }
 

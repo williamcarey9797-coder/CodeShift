@@ -9,6 +9,7 @@ FILES = [
     "src/main/java/com/example/app/User.java",
     "src/main/java/com/example/app/OrderService.java",
     "src/main/java/com/example/app/OrderController.java",
+    "src/main/java/com/example/app/LegacyTokenEncoder.java",
 ]
 
 def fresh_copy(base_repo: str, temp_name: str) -> Path:
@@ -66,13 +67,24 @@ def run_benchmark(base_repo: str = "sample_repo") -> dict:
     dir_c = fresh_copy(base_repo, "temp_bench_hybrid")
     t0 = time.time()
     run_openrewrite(str(dir_c), offline=True)
-    if (
-        run_maven_build(str(dir_c), java_version=21, offline=True)["passed"]
-        and run_junit_tests(str(dir_c), offline=True)["passed"]
-    ):
+    build_check = run_maven_build(str(dir_c), java_version=21, offline=True)
+    if build_check["passed"] and run_junit_tests(str(dir_c), offline=True)["passed"]:
         final_c = {"tokens_used": 0, "escalated_files": []}
     else:
-        final_c = run_agent_on_folder(dir_c)
+        error_log = "\n".join(build_check["errors"])
+        broken_files = [str(dir_c / f) for f in FILES if Path(f).name in error_log]
+        final_c = workflow.invoke({
+            "repo_path": str(dir_c),
+            "files_queue": broken_files or [str(dir_c / f) for f in FILES],
+            "current_file": "",
+            "original_code": "",
+            "errors": [],
+            "retries": 0,
+            "tokens_used": 0,
+            "completed_files": [],
+            "escalated_files": [],
+        })
+
 
     results["codeshift_hybrid"] = {
         "time_sec": round(time.time() - t0, 2),
