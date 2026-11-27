@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>CodeShift — Enterprise Java 8 to 21 Migration Console</title>
+  <style>
+    body { background: #090d16; color: #f8fafc; font-family: system-ui, sans-serif; margin: 0; }
+    .container { max-width: 1040px; margin: 36px auto; padding: 0 20px; }
+    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin: 18px 0; }
+    .card {
+      background: #111827; border: 1px solid #1f2937; border-radius: 14px; padding: 20px;
+      transition: transform 0.2s ease, border-color 0.2s ease;
+    }
+    .card:hover { transform: translateY(-3px); border-color: #3b82f6; }
+    .big-num { font-size: 34px; font-weight: 800; color: #60a5fa; margin: 6px 0; font-variant-numeric: tabular-nums; }
+    .pill-pass { background: rgba(34,197,94,0.15); color: #4ade80; border: 1px solid #22c55e; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+    .pill-fail { background: rgba(239,68,68,0.15); color: #f87171; border: 1px solid #ef4444; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+    .steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 16px 0; }
+    .step { background: #0f172a; border: 1px solid #334155; border-radius: 10px; padding: 12px; font-size: 13px; color: #94a3b8; }
+    .step.active { border-color: #3b82f6; color: #f8fafc; animation: pulse 1.1s infinite; }
+    .step.done { border-color: #22c55e; color: #4ade80; background: rgba(34,197,94,0.08); animation: none; }
+    .step-detail { font-size: 11px; color: #94a3b8; margin-top: 6px; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+    input { background: #090d16; color: #f8fafc; border: 1px solid #334155; padding: 11px 14px; border-radius: 8px; width: 260px; margin-right: 10px; }
+    button { background: #2563eb; color: white; border: none; padding: 11px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; }
+    button:hover { background: #3b82f6; }
+    button.approve { background: #16a34a; margin-top: 14px; }
+    button.approve:disabled { background: #475569; cursor: not-allowed; }
+    .report-box { background: #0b1120; border: 1px solid #1e293b; border-radius: 10px; padding: 16px; margin-top: 14px; }
+    pre { background: #030712; border: 1px solid #1f2937; padding: 14px; border-radius: 8px; overflow-x: auto; font-size: 12px; color: #cbd5e1; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>CodeShift</h1>
+    <p style="color:#94a3b8;">Neuro-Symbolic Java 8 &rarr; Java 21 Migration &amp; JUnit 5 Verification Console</p>
+
+    <div class="grid">
+      <div class="card"><div style="color:#94a3b8;font-size:13px;">Token Cost Reduction vs. LLM-Only</div><div id="statTokensSaved" class="big-num">0.0%</div></div>
+      <div class="card"><div style="color:#94a3b8;font-size:13px;">End-to-End Hybrid Latency</div><div id="statLatency" class="big-num">0.00s</div></div>
+      <div class="card"><div style="color:#94a3b8;font-size:13px;">Hybrid Tokens Consumed</div><div id="statTokens" class="big-num">0</div></div>
+    </div>
+
+    <h2>1. 3-Way Evaluation Benchmark</h2>
+    <div id="benchGrid" class="grid">Loading benchmark...</div>
+
+    <h2>2. Real-Time Migration Execution &amp; Executive Audit Report</h2>
+    <div class="card">
+      <input id="repoInput" value="sample_repo" placeholder="Local repo path" />
+      <input id="ghInput" value="williamcarey9797-coder/CodeShift" placeholder="owner/repo" />
+      <button onclick="runMigration()">Run Java 8 &rarr; 21 Migration</button>
+
+      <div class="steps">
+        <div id="s1" class="step"><strong>1. OpenRewrite AST</strong><div id="d1" class="step-detail">Waiting...</div></div>
+        <div id="s2" class="step"><strong>2. Compiler Triage</strong><div id="d2" class="step-detail">Waiting...</div></div>
+        <div id="s3" class="step"><strong>3. LangGraph Repair</strong><div id="d3" class="step-detail">Waiting...</div></div>
+        <div id="s4" class="step"><strong>4. JUnit 5 Sandbox</strong><div id="d4" class="step-detail">Waiting...</div></div>
+      </div>
+
+      <div id="auditReport" class="report-box" style="display:none;"></div>
+      <button id="prBtn" class="approve" style="display:none;" onclick="approvePR()">Approve &amp; Open GitHub PR</button>
+    </div>
+  </div>
+
+  <script>
+    let lastReceipt = null;
+
+    function animateCounter(el, target, suffix = "", decimals = 0, duration = 1400) {
+      const start = performance.now();
+      function frame(now) {
+        const progress = Math.min((now - start) / duration, 1);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        el.textContent = (target * eased).toFixed(decimals) + suffix;
+        if (progress < 1) requestAnimationFrame(frame);
+      }
+      requestAnimationFrame(frame);
+    }
+
+    async function loadBenchmark() {
+      const res = await fetch("/benchmark");
+      const data = await res.json();
+      const savedPct = ((data.llm_only.tokens - data.codeshift_hybrid.tokens) / data.llm_only.tokens) * 100;
+      animateCounter(document.getElementById("statTokensSaved"), savedPct, "%", 1);
+      animateCounter(document.getElementById("statLatency"), data.codeshift_hybrid.time_sec, "s", 2);
+      animateCounter(document.getElementById("statTokens"), data.codeshift_hybrid.tokens, "", 0);
+
+      document.getElementById("benchGrid").innerHTML = Object.entries(data).map(([name, m]) => `
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <strong>${name}</strong>
+            <span class="${m.tests_passed ? 'pill-pass' : 'pill-fail'}">${m.tests_passed ? 'PASSED' : 'FAILED'}</span>
+          </div>
+          <p style="color:#94a3b8;margin:12px 0 4px;">Latency: <strong style="color:#f8fafc;">${m.time_sec}s</strong></p>
+          <p style="color:#94a3b8;margin:4px 0;">AI Tokens: <strong style="color:#f8fafc;">${m.tokens}</strong></p>
+        </div>
+      `).join("");
+    }
+
+    function runMigration() {
+      const repo = document.getElementById("repoInput").value;
+      const report = document.getElementById("auditReport");
+      report.style.display = "none";
+      document.getElementById("prBtn").style.display = "none";
+      [1, 2, 3, 4].forEach(n => {
+        document.getElementById("s" + n).className = "step";
+        document.getElementById("d" + n).textContent = "Queued...";
+      });
+
+      const es = new EventSource(`/migrate-stream?repo_path=${encodeURIComponent(repo)}`);
+      es.onmessage = (event) => {
+        const msg = JSON.parse(event.data);
+        if (msg.step) {
+          document.getElementById("s" + msg.step).className = "step " + msg.status;
+          document.getElementById("d" + msg.step).textContent = msg.msg;
+        }
+        if (msg.done) {
+          es.close();
+          lastReceipt = msg;
+          animateCounter(document.getElementById("statTokens"), msg.tokens_used, "", 0);
+          const diffHtml = msg.diffs.length
+            ? msg.diffs.map(d => `<p><strong>Modified: ${d.file}</strong></p><pre>${d.diff.replace(/</g, "&lt;")}</pre>`).join("")
+            : "<p style='color:#94a3b8;'>No source file mutations required (repository already compliant with JDK 21).</p>";
+
+          report.innerHTML = `
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <h3 style="margin:0;">Executive Migration Audit Summary</h3>
+              <span class="${msg.tests_passed ? 'pill-pass' : 'pill-fail'}">${msg.tests_passed ? 'VERIFIED: JUNIT 5 PASSED' : 'FAILED VERIFICATION'}</span>
+            </div>
+            <p style="color:#cbd5e1;line-height:1.6;">
+              Scanned <strong>${msg.files_scanned}</strong> Java source files in <code>${msg.repo_path}</code>.
+              Deterministic OpenRewrite handled standard syntax upgrades at <strong>0 tokens</strong>;
+              LangGraph AI targeted <strong>${msg.ai_repaired_files.length}</strong> residual failure(s)
+              (${msg.ai_repaired_files.join(", ") || "none"}) consuming <strong>${msg.tokens_used} tokens</strong>
+              with <strong>${msg.escalated_files.length}</strong> human escalation(s).
+            </p>
+            ${diffHtml}
+          `;
+          report.style.display = "block";
+          if (msg.tests_passed) document.getElementById("prBtn").style.display = "inline-block";
+        }
+      };
+    }
+
+    async function approvePR() {
+      const report = document.getElementById("auditReport");
+      const btn = document.getElementById("prBtn");
+      btn.disabled = true;
+      btn.textContent = "Opening GitHub PR...";
+      try {
+        const res = await fetch("/pr", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            repo_full_name: document.getElementById("ghInput").value,
+            local_repo_path: document.getElementById("repoInput").value,
+            summary: `CodeShift Migration | Files Scanned: ${lastReceipt.files_scanned} | Tokens: ${lastReceipt.tokens_used} | JUnit 5 Passed: ${lastReceipt.tests_passed}`,
+            tests_passed: lastReceipt.tests_passed,
+            approved: true
+          })
+        });
+        const prData = await res.json();
+        const link = prData.pr_url ? `<a href="${prData.pr_url}" target="_blank" style="color:#60a5fa;">${prData.pr_url}</a>` : prData.reason;
+        report.innerHTML += `<p style="color:${prData.pr_created ? '#4ade80' : '#f87171'};font-weight:bold;margin-top:12px;">PR Result: ${link}</p>`;
+      } catch (err) {
+        report.innerHTML += `<p style="color:#f87171;font-weight:bold;margin-top:12px;">Request failed: ${err}</p>`;
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Approve & Open GitHub PR";
+      }
+    }
+
+    loadBenchmark();
+  </script>
+</body>
+</html>
